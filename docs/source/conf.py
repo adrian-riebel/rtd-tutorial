@@ -20,6 +20,11 @@ extensions = [
     'sphinx.ext.intersphinx',
 ]
 
+# -- Options for autodoc / napoleon
+autodoc_class_signature = "separated"
+autodoc_typehints = "description"
+add_module_names = False
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
