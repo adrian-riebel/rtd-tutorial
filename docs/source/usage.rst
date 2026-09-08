@@ -18,6 +18,6 @@ Creating recipes
 To retrieve a list of random ingredients,
 you can use the ``lumache.get_random_ingredients()`` function:
 
-.. autoclass:: sercpy.thermal.demand_profile.SomeClass
+.. autoclass:: sercpy.thermal.demand_profile.DemandProfile
 
 
