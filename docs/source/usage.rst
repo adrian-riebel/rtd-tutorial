@@ -6,17 +6,16 @@ Usage
 Installation
 ------------
 
-To use Lumache, first install it using pip:
+To use Sercpy, first install it using pip:
 
 .. code-block:: console
 
    (.venv) $ pip install sercpy
 
-Creating recipes
+Creating demand profiles
 ----------------
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
+To compute and obtain the demand conditions of a thermal load throughout an entire operation year, use the class ``DemandProfile``:
 
 .. autoclass:: sercpy.thermal.demand_profile.DemandProfile
 
