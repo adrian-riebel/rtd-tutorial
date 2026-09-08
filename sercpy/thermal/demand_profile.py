@@ -140,9 +140,11 @@ DemandProfile_accepted_args = [
 class DemandProfile:
     
     """
-    Class that computes, stores, and .
+    Class that computes, stores, and provides the thermal demand of a heating system during a whole operation year..
 
-    EXTENDED DESCRIPTION, if needed.
+    It allows the user to introduce custom daily demand profiles with time resolutions as small as 30 minutes.
+    
+    This class also takes into account the dependence of the demanded power on the ambient temperature, also being capable of determining that degree of dependence based on the monthly heat demand provided by the user.
 
     Parameters
     ----------
@@ -155,25 +157,25 @@ class DemandProfile:
     T_set : float or list of float
         Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 25 <= T_set <= 150.
     T_in : float or list of float
-        Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 2 <= T_set <= 100.
+        Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 2 <= T_set <= 130.
     daily_demand_profile : list of float, optional
-        List of floating point values. .
+        List of floating point values of length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; what matters is their values relative to each other.
     daily_demand_profile_saturday : list of float, optional
-        DESCRIPTION.
+        Special daily demand profile for saturday. The format required is the same as for ``daily_demand_profile``.
     daily_demand_profile_sunday : list of float, optional
-        DESCRIPTION.
+        Special daily demand profile for sunday. The format required is the same as for ``daily_demand_profile``..
     daily_demand_ratio_saturday : float, optional
-        DESCRIPTION.
+        Ratio between the total daily demand on saturdays and the total daily demand on a week day.
     daily_demand_ratio_sunday : float, optional
-        DESCRIPTION.
+        Ratio between the total daily demand on sundays and the total daily demand on a week day.
     peak_demand_ratio_saturday : float, optional
-        DESCRIPTION.
+        Ratio between the peak demand on saturdays and the peak on a week day. If specified, this parameter overrides ``daily_demand_ratio_saturday``.
     peak_demand_ratio_sunday : float, optional
-        DESCRIPTION.
+        Ratio between the peak demand on sundays and the peak on a week day. If specified, this parameter overrides ``daily_demand_ratio_sunday``..
     weekly_demand_factors : list of float, optional
-        DESCRIPTION.
+        List of seven values defining the relative total daily demand of each day of the week, starting on monday. If specified, this parameter overrides the four "ratio" parameters just described.
     daily_demand_profiles : list of list of float, optional
-        DESCRIPTION.
+        List of seven demand profiles; one for each day of the week, starting on monday. It must be specified along with ``weekly_demand_factors``.
     weekly_demand_profile : list of float, optional
         DESCRIPTION.
     op_start : str, optional
@@ -818,28 +820,20 @@ class DemandProfile:
                 raise ValueError("Class DemandProfile: Argument 'normalize_daily_demand' must be a boolean value.")
                 
         if argument_name in [ "T_set", "T_in" ]:
+            temp_limits = [ [ 25, 150 ], [ 2,130 ] ][ [ "T_set", "T_in" ].index( argument_name ) ]
             try:
                 value = float(value)
-                assert value >= 15 and value <= 150
+                assert value >= temp_limits[0] and value <= temp_limits[1]
                 value = [ value ]*12
             except TypeError:
                 try:
                     value = list(value)
                     value = [ float(v) for v in value ]
-                    assert all([ v >= 15 and v <= 150 for v in value ])
+                    assert all([ v >= temp_limits[0] and v <= temp_limits[1] for v in value ])
                 except:
-                    raise ValueError("Class DemandProfile: {argument_name} must be a numeric value in the range 15 <= T <= 150, or a list of 12 values in the same range.")
+                    raise ValueError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
             except AssertionError:
-                raise ValueError("Class DemandProfile: {argument_name} must be a numeric value in the range 15 <= T <= 150, or a list of 12 values in the same range.")
-        
-        if argument_name in [ "monthly_T_set", "monthly_T_in" ]:
-            try:
-                value = list(value)
-                assert len(value) == 12
-                value = [ float(v) for v in value ]
-                assert all([ element >= 15 and element <= 150 for element in value ])
-            except:
-                raise ValueError("Class DemandProfile: {argument_name} must be a list of 12 values convertible to type 'float', within the range: >= 15, <= 150.")
+                raise ValueError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
                 
         if argument_name == "Tamb_dependence":
             if ( not callable(value) ) or value is None or value == "auto":
