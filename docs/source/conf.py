@@ -19,6 +19,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'nbsphinx',
+    'sphinx_new_tab_link',
 ]
 
 # -- Options for autodoc / napoleon
