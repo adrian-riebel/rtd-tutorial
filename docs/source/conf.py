@@ -3,8 +3,8 @@
 # -- Project information
 
 project = 'sercpy'
-copyright = '2021, Graziella'
-author = 'Graziella'
+copyright = '2026, SERC Chile'
+author = 'Solar Energy Research Center (SERC) Chile'
 
 release = '0.1'
 version = '0.1.0'
