@@ -26,6 +26,9 @@ autodoc_class_signature = "separated"
 autodoc_typehints = "description"
 add_module_names = False
 
+# Prevent Notebooks from being executed
+nbsphinx_execute = 'never'
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
