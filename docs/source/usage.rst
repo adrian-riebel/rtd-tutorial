@@ -6,7 +6,7 @@ Usage
 Installation
 ------------
 
-To use Sercpy, first install it using pip:
+To use SERCpy, first install it using pip:
 
 .. code-block:: console
 
