@@ -6,29 +6,35 @@ Usage
 Installation
 ------------
 
-To use Lumache, first install it using pip:
+To use SERCpy, first install it using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install lumache
+   (.venv) $ pip install sercpy
 
-Creating recipes
+Setting the API key for "Energias Renovables" by Chile's Ministry of Energy
+------------
+
+If you are going to simulate solar energy systems within the Chilean territory and have an API key for `Ministry of Energy's "Energias Renovables" website <https://api.minenergia.cl>`_, use the following code lines to store the key and use it in the future without introducing it every time:
+
+.. doctest::
+
+   >>> from sercpy.config import set_api_key
+   >>> set_api_key( "your_API_Key_as_a_string" )
+
+You can then check whether the API key was saved successfully:
+
+.. doctest::
+
+   >>> from sercpy.config import api_key
+   >>> print( api_key )
+   your_API_Key_as_a_string
+
+Creating demand profiles
 ----------------
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
+To compute and obtain the demand conditions of a thermal load throughout an entire operation year, use the class ``DemandProfile``:
 
-.. autofunction:: lumache.get_random_ingredients
+.. autoclass:: sercpy.thermal.demand_profile.DemandProfile
 
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
-
-.. autoexception:: lumache.InvalidKindError
-
-For example:
-
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
 
