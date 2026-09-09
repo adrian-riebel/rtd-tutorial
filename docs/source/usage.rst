@@ -22,7 +22,7 @@ If you are going to simulate solar energy systems within the Chilean territory a
    >>> from sercpy.config import set_api_key
    >>> set_api_key( "your_API_Key_as_a_string" )
 
-You can then check whether the API Key was saved successfully:
+You can then check whether the API key was saved successfully:
 
 .. doctest::
 
