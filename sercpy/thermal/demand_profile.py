@@ -140,7 +140,7 @@ DemandProfile_accepted_args = [
 class DemandProfile:
     
     """
-    Class that computes, stores, and provides the thermal demand of a heating system during a whole operation year..
+    Class that computes, stores, and provides the thermal demand of a heating system throughout an entire operation year..
 
     It allows the user to introduce custom daily demand profiles with time resolutions as small as 30 minutes.
     
@@ -159,11 +159,11 @@ class DemandProfile:
     T_in : float or list of float
         Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 2 <= T_set <= 130.
     daily_demand_profile : list of float, optional
-        List of floating point values of length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; what matters is their values relative to each other.
+        List of floating point values with length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; the total energy demand gets distributed throughout the day proportionally to the values of the list.
     daily_demand_profile_saturday : list of float, optional
-        Special daily demand profile for saturday. The format required is the same as for ``daily_demand_profile``.
+        Special daily demand profile for saturday. This parameter is only considered if ``daily_demand_profile`` is specified. The format required is the same as for ``daily_demand_profile``. If not specified, saturday is assumed to have the same profile as week days (given by the parameter ``daily_demand_profile``).
     daily_demand_profile_sunday : list of float, optional
-        Special daily demand profile for sunday. The format required is the same as for ``daily_demand_profile``..
+        Special daily demand profile for sunday. This parameter is only considered if ``daily_demand_profile`` is specified. The format required is the same as for ``daily_demand_profile``. If not specified, the behavior depends on whether ``daily_demand_profile_saturday`` was specified. If it was specified, sunday is assumed to have no demand at all. If it was not specified, all days are assumed to have the same profile, defined by the parameter ``daily_demand_profile``.
     daily_demand_ratio_saturday : float, optional
         Ratio between the total daily demand on saturdays and the total daily demand on a week day.
     daily_demand_ratio_sunday : float, optional
@@ -175,13 +175,13 @@ class DemandProfile:
     weekly_demand_factors : list of float, optional
         List of seven values defining the relative total daily demand of each day of the week, starting on monday. If specified, this parameter overrides the four "ratio" parameters just described.
     daily_demand_profiles : list of list of float, optional
-        List of seven demand profiles; one for each day of the week, starting on monday. It must be specified along with ``weekly_demand_factors``.
+        List of seven daily demand profiles; one for each day of the week, starting on monday see ``daily_demand_profile``. It must be specified along with ``weekly_demand_factors``.
     weekly_demand_profile : list of float, optional
-        DESCRIPTION.
+        Demand profile encompassing an entire week. It is equivalent to concatenating seven daily demand profiles of the same length, where the values of all profiles have a comparable scale.
     op_start : str, optional
-        DESCRIPTION.
+        Operation start time. It must be a string with the format "hh:mm", going from `"00:00"` to "23:30". The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with ``op_end``. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters ``daily_demand_profile``, ``daily_demand_profiles``, or ``weekly_demand_profile`` is specified.
     op_end : str, optional
-        DESCRIPTION.
+        Operation end time. It must be a string with the format "hh:mm", going from `"00:00"` to "23:30". The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with ``op_start``. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters ``daily_demand_profile``, ``daily_demand_profiles``, or ``weekly_demand_profile`` is specified..
     op_start_saturday : str, optional
         DESCRIPTION.
     op_end_saturday : str, optional

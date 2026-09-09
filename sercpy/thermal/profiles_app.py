@@ -5,6 +5,8 @@ Created on Mon Aug 31 14:38:54 2026
 @author: adria
 """
 
+from pathlib import Path
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font as tkfont
@@ -28,7 +30,7 @@ except ImportError:
 
 
 class ProfileApp(tk.Tk):
-    PROFILE_OPTIONS = ["Daily profile", "Weekly profile", "Yearly profile"]
+    PROFILE_OPTIONS = ["Day", "Week", "Year"]
  
     INTERVAL_OPTIONS = [
         "2 (12 hours per value)",
@@ -41,22 +43,22 @@ class ProfileApp(tk.Tk):
         "48 (1/2 hour per value)",
     ]
  
-    # Whenever the profile combobox is set to "Daily profile" (including on
+    # Whenever the profile combobox is set to "Day" (including on
     # startup, since that's the default profile), the interval combobox is
     # forced to this option.
     DEFAULT_DAILY_INTERVAL = "24 (1 hour per value)"
  
     # --- Bottom-label lists -------------------------------------------------
-    # Weekly profile always has 7 sliders -> 7 labels.
+    # Week always has 7 sliders -> 7 labels.
     WEEKLY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
  
-    # Yearly profile always has 12 sliders -> 12 labels.
+    # Year always has 12 sliders -> 12 labels.
     YEARLY_LABELS = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ]
  
-    # Daily profile: the number of sliders depends on the interval combobox,
+    # Day: the number of sliders depends on the interval combobox,
     # so define one list per possible slider count (1, 2, 3, 4, 6, 8, 12, 24,
     # 48). Replace/extend any of these with your own text; entries you don't
     # define here fall back to auto-generated time-range labels (see
@@ -67,21 +69,27 @@ class ProfileApp(tk.Tk):
     }
  
     # Slider range (top value, bottom value). Change these to whatever scale
-    # your data uses.
-    SLIDER_TOP_VALUE = 100
-    SLIDER_BOTTOM_VALUE = 0
-    SLIDER_RESOLUTION = 1
-    SLIDER_INITIAL_VALUE = 50
+    # your data uses. With a resolution of 0.01, each slider has 101
+    # possible positions: 0.00, 0.01, 0.02, ..., 1.00.
+    SLIDER_TOP_VALUE = 1.0
+    SLIDER_BOTTOM_VALUE = 0.0
+    SLIDER_RESOLUTION = 0.01
+    SLIDER_INITIAL_VALUE = 0.5
+    SLIDER_DECIMALS = 2   # decimal places shown -- keep in sync with SLIDER_RESOLUTION
     SLIDER_WIDTH = 15   # width (in pixels) of the trough/handle
- 
+
+    # Logo shown in the top-right corner of the window. Must live in the
+    # same folder as this script.
+    LOGO_FILENAME = "serc_logo.png"
+
     def __init__(self):
         super().__init__()
-        self.title("Profile App")
+        self.title("SERCpy - Profile App")
         self.geometry("900x400")
- 
+
         self.sliders = []        # tk.Scale widgets, one per slider
         self.value_labels = []   # top labels showing the current value
- 
+
         self._build_top_row()
         self._build_slider_area()
         self._rebuild_sliders()
@@ -106,8 +114,8 @@ class ProfileApp(tk.Tk):
         self.profile_combo.grid(row=1, column=0, padx=(0, 5))
         self.profile_combo.bind("<<ComboboxSelected>>", self._on_profile_change)
  
-        # --- Interval combobox (right one, only shown for "Daily profile") ---
-        # Starts on DEFAULT_DAILY_INTERVAL since "Daily profile" (the first
+        # --- Interval combobox (right one, only shown for "Day") ---
+        # Starts on DEFAULT_DAILY_INTERVAL since "Day" (the first
         # PROFILE_OPTIONS entry) is the default profile shown on startup.
         self.interval_var = tk.StringVar(value=self.DEFAULT_DAILY_INTERVAL)
         self.interval_combo = ttk.Combobox(
@@ -119,7 +127,7 @@ class ProfileApp(tk.Tk):
         )
         self.interval_combo.bind("<<ComboboxSelected>>", self._on_interval_change)
 
-        # --- "Total demand" label + entry, only shown for "Yearly profile".
+        # --- "Total" label + entry, only shown for "Year".
         # It sits in the same slot the interval combobox uses -- the two
         # are never visible at the same time, so they can share the space
         # next to the profile combobox.
@@ -127,24 +135,84 @@ class ProfileApp(tk.Tk):
         self.total_demand_entry = ttk.Entry(
             top_row, textvariable=self.total_demand_var, width=20
         )
-        
+
         # Top row widet labels
-        
+
         separator_length = 15
         self.first_row_separator = ttk.Label(top_row, text = " "*separator_length )
-        self.total_demand_label = ttk.Label(top_row, text = "Total demand" )
-        self.profile_combo_label = ttk.Label(top_row, text = "Demand type" )
+        self.profile_combo_label = ttk.Label(top_row, text = "Profile type" )
         self.interval_combo_label = ttk.Label( top_row, text = "Number of values" )
-        
+
+        # --- "Total" label + checkbutton, both above the "Total" entry ---
+        # A small frame holds the two side by side (packed, not gridded)
+        # and is itself gridded as one unit directly above the entry (same
+        # row/column the other labels use), so together they sit right
+        # over the entry rather than trailing off to its right.
+        # Active by default. Turning it off clears and locks the entry;
+        # turning it back on unlocks it again (see
+        # _on_total_demand_checkbox_toggle). Its state also decides how
+        # _generate_list behaves for "Year" -- see there.
+        self.total_demand_header = ttk.Frame(top_row)
+        self.total_demand_label = ttk.Label(self.total_demand_header, text="Total")
+        self.total_demand_checkbox_var = tk.BooleanVar(value=True)
+        self.total_demand_checkbox = tk.Checkbutton(
+            self.total_demand_header,
+            variable=self.total_demand_checkbox_var,
+            command=self._on_total_demand_checkbox_toggle,
+        )
+        self.total_demand_label.pack(side="left")
+        # ~10px of separation between the label and the checkbutton.
+        self.total_demand_checkbox.pack(side="left", padx=(10, 0))
+
         self.profile_combo_label.grid(row=0, column=0, sticky = 'w')
         self.first_row_separator.grid( row = 0, column = 1 )
         self._update_top_row_visibility()
 
+        # --- Logo, pinned to the top-right corner of the window ---
+        # Deliberately NOT gridded inside top_row. A grid widget as tall as
+        # the logo, spanning the label row and the combobox row, forces Tk
+        # to stretch one of those two rows to fit it -- and since the
+        # comboboxes/entry below the labels have no sticky setting (so
+        # they're centered in their cell), that stretched row was pushing
+        # them down, away from their labels above.
+        # `place()` sidesteps this entirely: it positions the logo purely
+        # relative to the window's own size, completely independent of
+        # top_row's grid, so it can never affect that layout. relx=1.0 +
+        # anchor="ne" keeps it pinned to the top-right corner, and Tk
+        # automatically recomputes that position whenever the window is
+        # resized (e.g. when switching profiles resizes it via
+        # `geometry("")` in `_rebuild_sliders`).
+        logo_path = Path(__file__).resolve().parent / "img" / self.LOGO_FILENAME
+        try:
+            # Keep a reference on `self` -- if the PhotoImage object were
+            # only a local variable here, Python would garbage-collect it
+            # as soon as this method returns, and the image would vanish
+            # from the label (a classic Tkinter gotcha).
+            self.logo_image = tk.PhotoImage(file=str(logo_path))
+        except tk.TclError:
+            self.logo_image = None
+            print(
+                f'Note: could not load the logo image at "{logo_path}" -- '
+                f'make sure "{self.LOGO_FILENAME}" is in the same folder as '
+                "profile_app.py."
+            )
+
+        if self.logo_image is not None:
+            logo_label = tk.Label(self, image=self.logo_image)
+            logo_label.place(relx=1.0, x=-10, y=10, anchor="ne")
+
+            # Guarantee the window can never shrink enough for the logo to
+            # overlap the controls to its left (e.g. for "Week",
+            # whose slider row is fairly narrow).
+            top_row.update_idletasks()
+            controls_width = top_row.winfo_reqwidth()
+            self.minsize(controls_width + self.logo_image.width() + 30, 1)
+
     def _on_profile_change(self, event=None):
-        # Every time the profile switches to "Daily profile", reset the
+        # Every time the profile switches to "Day", reset the
         # interval combobox to the default (24 -- 1 hour per value) rather
         # than leaving whatever was last selected there.
-        if self.profile_var.get() == "Daily profile":
+        if self.profile_var.get() == "Day":
             self.interval_var.set(self.DEFAULT_DAILY_INTERVAL)
         self._update_top_row_visibility()
         self._rebuild_sliders()
@@ -155,19 +223,30 @@ class ProfileApp(tk.Tk):
     def _update_top_row_visibility(self):
         profile = self.profile_var.get()
         
-        if profile == "Daily profile":
+        if profile == "Day":
             self.interval_combo_label.grid( row = 0, column = 2, sticky = 'w' )
             self.interval_combo.grid( row = 1, column = 2, )
         else:
             self.interval_combo_label.grid_remove()
             self.interval_combo.grid_remove()
 
-        if profile == "Yearly profile":
-            self.total_demand_label.grid( row = 0, column = 2, sticky = 'w' )
+        if profile == "Year":
+            self.total_demand_header.grid( row = 0, column = 2, sticky = 'w' )
             self.total_demand_entry.grid( row = 1, column = 2, )
         else:
-            self.total_demand_label.grid_remove()
+            self.total_demand_header.grid_remove()
             self.total_demand_entry.grid_remove()
+
+    def _on_total_demand_checkbox_toggle(self):
+        """Turning the checkbutton off clears the "Total" entry and locks
+        it (so the user can't type into it while it's off); turning it
+        back on unlocks it again for a fresh value. The checkbutton's
+        state is also read directly by _generate_list."""
+        if self.total_demand_checkbox_var.get():
+            self.total_demand_entry.config(state="normal")
+        else:
+            self.total_demand_var.set("")
+            self.total_demand_entry.config(state="disabled")
 
 
     # ------------------------------------------------------------------ #
@@ -177,25 +256,28 @@ class ProfileApp(tk.Tk):
         # Container that will hold one sub-frame per slider. It gets
         # cleared and repopulated every time the slider count changes.
         self.slider_area = ttk.Frame(self)
-        self.slider_area.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        # Top padding of 20 (on top of top_row's own bottom padding of 10)
+        # gives ~30px of separation between the comboboxes/logo row above
+        # and the sliders below.
+        self.slider_area.grid(row=1, column=0, sticky="nsew", padx=10, pady=(20, 10))
  
     def _current_slider_count(self):
         profile = self.profile_var.get()
-        if profile == "Weekly profile":
+        if profile == "Week":
             return 7
-        if profile == "Yearly profile":
+        if profile == "Year":
             return 12
-        # "Daily profile" -> depends on the interval combobox
+        # "Day" -> depends on the interval combobox
         combo_option = self.interval_var.get()
         return int(combo_option.split(" ")[0])
  
     def _current_bottom_labels(self, n):
         profile = self.profile_var.get()
-        if profile == "Weekly profile":
+        if profile == "Week":
             return self.WEEKLY_LABELS
-        if profile == "Yearly profile":
+        if profile == "Year":
             return self.YEARLY_LABELS
-        # Daily profile
+        # Day
         return self.DAILY_LABELS.get(n, self._generate_daily_labels(n))
  
     @staticmethod
@@ -231,14 +313,14 @@ class ProfileApp(tk.Tk):
         n = self._current_slider_count()
         bottom_labels = self._current_bottom_labels(n)
  
-        # For "Weekly profile" and "Yearly profile" only: give every
+        # For "Week" and "Year" only: give every
         # slider-plus-label column the same fixed width, a bit larger than
         # the widest bottom label, so a long label (e.g. "September")
         # doesn't widen just its own column and throw off the spacing.
-        # ("Daily profile" is excluded -- its labels are rotated 90°, so
+        # ("Day" is excluded -- its labels are rotated 90°, so
         # they take up hardly any horizontal space to begin with.)
         fixed_col_width = None
-        if profile in ("Weekly profile", "Yearly profile"):
+        if profile in ("Week", "Year"):
             default_font = tkfont.nametofont("TkDefaultFont")
             longest_label_width = max(default_font.measure(lbl) for lbl in bottom_labels)
             fixed_col_width = longest_label_width + 20  # margin beyond the longest label
@@ -248,7 +330,7 @@ class ProfileApp(tk.Tk):
             col_frame.grid(row=0, column=i, padx=2, sticky="ns")
  
             # --- Top label: shows the slider's current value ---
-            value_label = tk.Label(col_frame, text=str(self.SLIDER_INITIAL_VALUE))
+            value_label = tk.Label(col_frame, text=self._format_slider_value(self.SLIDER_INITIAL_VALUE))
             value_label.grid(row=0, column=0)
             self.value_labels.append(value_label)
  
@@ -278,11 +360,11 @@ class ProfileApp(tk.Tk):
             self.sliders.append(scale)
  
             # --- Bottom label: fixed text from the label list. Only the
-            # "Daily profile" case gets its labels rotated 90° (there can be
+            # "Day" case gets its labels rotated 90° (there can be
             # up to 48 of them, and the time-range text is long); Weekly and
             # Yearly stay as normal horizontal labels.
             text = bottom_labels[i] if i < len(bottom_labels) else str(i + 1)
-            if profile == "Daily profile":
+            if profile == "Day":
                 bottom_label = self._create_vertical_label(col_frame, text)
             else:
                 bottom_label = tk.Label(col_frame, text=text)
@@ -337,7 +419,7 @@ class ProfileApp(tk.Tk):
         self.generate_button.grid(row=0, column=0)
 
         # Shown next to the button when the list couldn't be generated
-        # (currently: an invalid "Total demand" value in Yearly profile).
+        # (currently: an invalid "Total" value in Yearly profile).
         self.status_var = tk.StringVar(value="")
         self.status_label = ttk.Label(button_row, textvariable=self.status_var, foreground="red")
         self.status_label.grid(row=0, column=1, padx=(10, 0))
@@ -370,18 +452,25 @@ class ProfileApp(tk.Tk):
         self.output_text.bind("<<Copy>>", self._on_copy_event)
 
     def _generate_list(self):
-        """Reads every slider's current value, multiplies it (for "Yearly
-        profile" only) by the "Total demand" entry, and writes the result
-        into `output_text` as "[ value_1, value_2, ..., value_n ]"."""
+        """Reads every slider's current value, multiplies it (for "Year"
+        only, and only while the "Total" checkbutton is active) by the
+        "Total" entry, and writes the result into `output_text` as
+        "[ value_1, value_2, ..., value_n ]"."""
         self.status_var.set("")
 
         profile = self.profile_var.get()
-        if profile == "Yearly profile":
+        # The "Total" entry/checkbutton only exist for "Year" -- and even
+        # there, the demand-scaling behavior only applies while the
+        # checkbutton is checked. Unchecked, "Year" behaves just like "Day"
+        # and "Week": the raw slider values go straight into the list.
+        use_total_demand = profile == "Year" and self.total_demand_checkbox_var.get()
+
+        if use_total_demand:
             try:
                 multiplier = float(self.total_demand_var.get())
                 assert multiplier > 0
             except (ValueError, AssertionError):
-                self.status_var.set('Invalid "Total demand" value -- please enter a number greater than 0.')
+                self.status_var.set('Invalid "Total" value -- please enter a number greater than 0.')
                 return
 
             values = [ scale.get() for scale in self.sliders ]
@@ -392,7 +481,12 @@ class ProfileApp(tk.Tk):
             values = [ value/sum_values for value in values ]
             values = [ self._format_value( multiplier*value ) for value in values ]
         else:
-            values = [self._format_value(scale.get()) for scale in self.sliders]
+            # Raw slider positions -- formatted with the same fixed decimal
+            # places as the 0.00-1.00 grid they move on (unlike the
+            # demand-scaling branch above, whose values are scaled
+            # proportions, not raw slider positions, so they keep the
+            # flexible formatting).
+            values = [self._format_slider_value(scale.get()) for scale in self.sliders]
 
         
         list_str = "[ " + ", ".join(values) + " ]"
@@ -449,11 +543,19 @@ class ProfileApp(tk.Tk):
 
     @staticmethod
     def _format_value(value):
-        """Format a slider value without a redundant trailing ".0" when
-        it's a whole number (the usual case, since SLIDER_RESOLUTION=1)."""
+        """Format a value without a redundant trailing ".0" when it's a
+        whole number. Used for the Yearly-profile output, where values are
+        demand-scaled proportions rather than raw slider positions, so a
+        fixed number of decimal places wouldn't necessarily fit them."""
         if float(value).is_integer():
             return str(int(value))
         return str(value)
+
+    @classmethod
+    def _format_slider_value(cls, value):
+        """Format a raw slider value with a fixed number of decimal places
+        (SLIDER_DECIMALS), matching the slider's own 0.00-1.00 grid."""
+        return f"{value:.{cls.SLIDER_DECIMALS}f}"
 
     @staticmethod
     def _on_slider_move(value, label):
